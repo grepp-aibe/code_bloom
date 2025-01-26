@@ -1,0 +1,40 @@
+# 성장 활동 리포트 자동 생성 워크플로우
+name: Daily Growth Activity Report
+
+# 트리거 조건 설정
+on:
+  workflow_dispatch:  # 수동 실행 허용
+  schedule:
+    # 한국 시간 09:00~18:00 매시 정각 실행 (UTC 0-9시)
+    - cron: '0 0-9 * * *'  
+
+# 작업 정의
+jobs:
+  generate-report:
+    runs-on: ubuntu-latest  # 실행 환경
+    
+    # 권한 설정
+    permissions:
+      issues: write  # 이슈 생성 권한
+      contents: read  # 저장소 코드 읽기 권한
+
+    steps:
+      # 저장소 코드 체크아웃
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Node.js 환경 설정
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'  # Node.js 버전 지정
+
+      # 메인 스크립트 실행
+      - name: Run Script
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 인증 토큰
+          TARGET_OWNER: 'grepp-aibe'             # 분석 대상 저장소 소유자
+          TARGET_REPO: 'new_year_resolution'     # 분석 대상 저장소 이름
+          ISSUE_OWNER: ${{ github.repository_owner }}  # 이슈 생성 위치
+          ISSUE_REPO: ${{ github.event.repository.name }}
+        run: node index.js
