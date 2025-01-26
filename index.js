@@ -199,8 +199,8 @@ async function generateGrowthReport() {
         }
 
         // 3) 참여율(소수점 2자리)
-        const participationRate = ((activeCount / developers.length) * 100).toFixed(2);
-        report += `\n### 📊 참여율: ${participationRate}% (${activeCount}/${developers.length}명)`;
+        // const participationRate = ((activeCount / developers.length) * 100).toFixed(2);
+        // report += `\n### 📊 참여율: ${participationRate}% (${activeCount}/${developers.length}명)`;
         console.log(`[${new Date().toISOString()}] 리포트 생성 완료`);
         return report;
 
