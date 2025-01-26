@@ -30,7 +30,7 @@ async function fetchWithRetry(url, options, retries = 3) {
 }
 
 /**
- * 개발자 목록 조회 함수
+ * 개발자 목록 조회 함수 (페이징 처리)
  * @returns {Promise<Array>} 개발자 정보 배열
  */
 async function fetchDevelopers() {
@@ -39,16 +39,29 @@ async function fetchDevelopers() {
     const owner = process.env.TARGET_OWNER;
     const repo = process.env.TARGET_REPO;
     
-    const response = await fetchWithRetry(
-        `https://api.github.com/repos/${owner}/${repo}/contributors`,
-        { headers: { 
-            Authorization: `Bearer ${token}`, 
-            Accept: "application/vnd.github.v3+json" 
-        }}
-    );
-    
-    const developers = await response.json();
-    console.log(`[${new Date().toISOString()}] 개발자 목록 조회 완료 (${developers.length}명)`);
+    let developers = [];
+    let page = 1;
+    const perPage = 100;
+
+    while (true) {
+        console.log(`[${new Date().toISOString()}] 페이지 ${page} 조회 중`);
+        const response = await fetchWithRetry(
+            `https://api.github.com/repos/${owner}/${repo}/contributors?page=${page}&per_page=${perPage}`,
+            { headers: { 
+                Authorization: `Bearer ${token}`, 
+                Accept: "application/vnd.github.v3+json" 
+            }}
+        );
+        
+        const data = await response.json();
+        if (data.length === 0) break;
+        
+        developers = developers.concat(data);
+        console.log(`[${new Date().toISOString()}] 페이지 ${page} 조회 완료 (현재 ${developers.length}명)`);
+        page++;
+    }
+
+    console.log(`[${new Date().toISOString()}] 개발자 목록 조회 완료 (총 ${developers.length}명)`);
     return developers;
 }
 
@@ -100,7 +113,6 @@ async function generateGrowthReport() {
         const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
         let report = `## 🌱 ${now} 성장 활동 현황\n\n`;
 
-        // 개발자별 활동 분석
         for (const dev of developers) {
             try {
                 const events = await fetchDeveloperActivity(dev.login);
@@ -113,7 +125,6 @@ async function generateGrowthReport() {
             }
         }
 
-        // 참여율 계산
         const participationRate = ((activeCount / developers.length) * 100).toFixed(2);
         report += `\n### 📊 참여율: ${participationRate}% (${activeCount}/${developers.length}명)`;
         console.log(`[${new Date().toISOString()}] 리포트 생성 완료`);
@@ -135,12 +146,10 @@ async function createGrowthReportIssue() {
         const OWNER = process.env.ISSUE_OWNER;
         const REPO = process.env.ISSUE_REPO;
         
-        // 이슈 메타데이터 생성
         const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
         const title = `🌿 ${now} 성장 활동 리포트`;
         const body = await generateGrowthReport();
         
-        // API 요청
         const response = await fetchWithRetry(
             `https://api.github.com/repos/${OWNER}/${REPO}/issues`,
             {
